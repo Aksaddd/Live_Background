@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Misty Ridge</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1b2420; }
+  canvas { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="mist"></canvas>
+<script src="assets.js"></script>
+<script src="mist.js"></script>
+<script>
+  // Lively Wallpaper calls this when a slider in the customise panel moves.
+  var pending = {};
+  var wall = null;
+  var map = {
+    speed: function (v) { return ["speed", v / 100]; },
+    thickness: function (v) { return ["density", v / 100]; },
+    wisps: function (v) { return ["wisps", v / 100]; },
+    fps: function (v) { return ["fps", v]; }
+  };
+  function livelyPropertyListener(name, val) {
+    var m = map[name];
+    if (!m) return;
+    var kv = m(Number(val));
+    if (wall) wall.set(kv[0], kv[1]); else pending[kv[0]] = kv[1];
+  }
+  MistyRidge.create(document.getElementById("mist"), window.MIST_ASSETS, {})
+    .then(function (w) { wall = w; for (var k in pending) w.set(k, pending[k]); })
+    .catch(function (e) { document.body.textContent = e.message; document.body.style.color = "#ddd"; });
+</script>
+</body>
+</html>

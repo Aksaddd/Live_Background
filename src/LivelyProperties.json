@@ -1,0 +1,6 @@
+{
+  "speed": { "type": "slider", "value": 100, "min": 0, "max": 300, "step": 5, "text": "Mist speed (%)" },
+  "thickness": { "type": "slider", "value": 85, "min": 0, "max": 200, "step": 5, "text": "Mist movement strength" },
+  "wisps": { "type": "slider", "value": 60, "min": 0, "max": 100, "step": 5, "text": "Drifting wisps" },
+  "fps": { "type": "slider", "value": 30, "min": 15, "max": 60, "step": 5, "text": "Frame rate cap" }
+}

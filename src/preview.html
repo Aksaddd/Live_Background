@@ -1,0 +1,149 @@
+<title>Misty Ridge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Figtree:wght@400;500;600&display=swap">
+<style>
+  /* Layout: the 32:9 two-monitor strip is the hero; tuning and install steps sit underneath. Single dark look, like the hour before dawn in a fogged valley. */
+  :root {
+    --bg: #121815;
+    --panel: #1a2320;
+    --line: #2c3833;
+    --fg: #e4e9e5;
+    --muted: #9aa8a1;
+    --accent: #a9c7b4;
+    --display: "Instrument Serif", Georgia, "Times New Roman", serif;
+    --ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--ui); font-size: 15px; line-height: 1.55; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 22px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; }
+  h1 { font-family: var(--display); font-weight: 400; font-size: clamp(2rem, 4vw, 3rem); line-height: 1; margin: 0; text-wrap: balance; }
+  .spec { color: var(--muted); font-size: 0.85rem; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+  .stage { position: relative; width: 100%; aspect-ratio: 32 / 9; max-width: 100%; background: #0c100e; border-radius: 4px; overflow: hidden; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .bezel { position: absolute; top: 0; bottom: 0; left: 50%; width: 6px; transform: translateX(-50%); background: #0a0d0c; pointer-events: none; }
+  .labels { display: flex; justify-content: space-between; color: var(--muted); font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; }
+  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px 28px; padding: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+  .ctl { display: grid; gap: 6px; min-width: 0; }
+  .ctl label { display: flex; justify-content: space-between; gap: 8px; font-weight: 500; }
+  .ctl output { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .ctl small { color: var(--muted); font-size: 0.8rem; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  button { font: inherit; font-weight: 600; color: var(--bg); background: var(--accent); border: 0; border-radius: 4px; padding: 10px 16px; cursor: pointer; user-select: none; touch-action: none; }
+  button.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .status { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px; }
+  .notes section { min-width: 0; }
+  h2 { font-family: var(--display); font-weight: 400; font-size: 1.6rem; margin: 0 0 8px; }
+  ol, p { margin: 0; max-width: 65ch; color: var(--fg); }
+  ol { padding-left: 1.2em; display: grid; gap: 6px; }
+  .muted { color: var(--muted); }
+  code { font-size: 0.9em; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+  .err { color: #f0b4a8; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Misty Ridge</h1>
+    <span class="spec">5120 × 1440 · two 2560 × 1440 monitors · haze re-rendered live</span>
+  </header>
+
+  <div>
+    <div class="stage" id="stage">
+      <canvas id="mist" aria-label="Animated mirrored forest with drifting mist"></canvas>
+      <div class="bezel" id="bezel"></div>
+    </div>
+    <div class="labels"><span>Display 1 · KG271U X</span><span>Display 2 · G27q-20</span></div>
+  </div>
+
+  <div class="controls">
+    <div class="ctl">
+      <label for="speed">Mist speed <output id="speedOut">100%</output></label>
+      <input id="speed" type="range" min="0" max="300" step="5" value="100">
+      <small>How fast the fog drifts up the slopes.</small>
+    </div>
+    <div class="ctl">
+      <label for="thickness">Movement strength <output id="thicknessOut">85</output></label>
+      <input id="thickness" type="range" min="0" max="200" step="5" value="85">
+      <small>How much fog thickens and thins as it moves. 0 is the still photo.</small>
+    </div>
+    <div class="ctl">
+      <label for="wisps">Drifting wisps <output id="wispsOut">60</output></label>
+      <input id="wisps" type="range" min="0" max="100" step="5" value="60">
+      <small>A thin travelling veil between the tree rows.</small>
+    </div>
+    <div class="ctl">
+      <label for="fps">Frame rate cap <output id="fpsOut">30 fps</output></label>
+      <input id="fps" type="range" min="15" max="60" step="5" value="30">
+      <small>Mist is slow; 30 looks smooth and keeps the GPU cool.</small>
+    </div>
+    <div class="row">
+      <button id="compare" type="button">Hold to see still photo</button>
+      <button id="toggleBezel" class="ghost" type="button" aria-pressed="true">Hide bezel line</button>
+      <span class="status" id="status">Loading…</span>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>Install on your PC</h2>
+      <ol>
+        <li>Install <strong>Lively Wallpaper</strong> (free) from the Microsoft Store or its GitHub page, rocksdanister/lively.</li>
+        <li>Download <code>MistyRidge-lively.zip</code> from the <code>wallpaper/mist/dist</code> folder on your GitHub branch.</li>
+        <li>In Lively, click <strong>+</strong> (Add wallpaper) and drop the zip in.</li>
+        <li>Open Lively's <strong>Settings → Wallpaper</strong> and set the arrangement to <strong>Span</strong>.</li>
+        <li>Click the Misty Ridge tile. To tune it, right-click the tile and choose <strong>Customise</strong>.</li>
+      </ol>
+    </section>
+    <section>
+      <h2>What you are looking at</h2>
+      <p>The fog in the photo was measured pixel by pixel, so the animation knows how far away each tree is. It thickens and thins that same fog over time, which keeps the mist behind the near trees and denser down the valleys. Each monitor gets its own mist, blowing up toward the ridge in the middle, so the two sides never move as mirror copies. The motion loops every 30 minutes with no visible seam.</p>
+    </section>
+  </div>
+</div>
+
+<script>{{ASSETS_JS}}</script>
+<script>{{MIST_JS}}</script>
+<script>
+  (function () {
+    var status = document.getElementById("status");
+    var fmt = {
+      speed: function (v) { return v + "%"; },
+      thickness: function (v) { return String(v); },
+      wisps: function (v) { return String(v); },
+      fps: function (v) { return v + " fps"; }
+    };
+    var map = { speed: ["speed", 0.01], thickness: ["density", 0.01], wisps: ["wisps", 0.01], fps: ["fps", 1] };
+
+    MistyRidge.create(document.getElementById("mist"), window.MIST_ASSETS, {}).then(function (w) {
+      Object.keys(map).forEach(function (id) {
+        var el = document.getElementById(id), out = document.getElementById(id + "Out");
+        var apply = function () { var v = Number(el.value); out.textContent = fmt[id](v); w.set(map[id][0], v * map[id][1]); };
+        el.addEventListener("input", apply);
+        apply();
+      });
+      w.onFps(function (f) { status.textContent = "Rendering at " + f.toFixed(0) + " fps"; });
+
+      var cmp = document.getElementById("compare"), saved = null;
+      var down = function () { if (saved) return; saved = [w.params.density, w.params.wisps]; w.set("density", 0); w.set("wisps", 0); cmp.textContent = "Showing still photo"; };
+      var up = function () { if (!saved) return; w.set("density", saved[0]); w.set("wisps", saved[1]); saved = null; cmp.textContent = "Hold to see still photo"; };
+      cmp.addEventListener("pointerdown", down);
+      ["pointerup", "pointerleave", "pointercancel"].forEach(function (e) { cmp.addEventListener(e, up); });
+      cmp.addEventListener("keydown", function (e) { if (e.key === " " || e.key === "Enter") { e.preventDefault(); down(); } });
+      cmp.addEventListener("keyup", up);
+    }).catch(function (e) {
+      status.textContent = "Could not start the animation: " + e.message;
+      status.className = "status err";
+    });
+
+    var bz = document.getElementById("toggleBezel"), bezel = document.getElementById("bezel");
+    bz.addEventListener("click", function () {
+      bezel.hidden = !bezel.hidden;
+      bz.setAttribute("aria-pressed", String(!bezel.hidden));
+      bz.textContent = bezel.hidden ? "Show bezel line" : "Hide bezel line";
+    });
+  })();
+</script>
