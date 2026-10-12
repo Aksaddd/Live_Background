@@ -1,4 +1,7 @@
 __pycache__/
 *.pyc
+app/bin/
+app/obj/
 dist/*
 !dist/MistyRidge-lively.zip
+!dist/LiveBackground-win-x64.zip

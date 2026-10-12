@@ -22,14 +22,21 @@
     wisps: function (v) { return ["wisps", v / 100]; },
     fps: function (v) { return ["fps", v]; }
   };
+  var paused = false;
   function livelyPropertyListener(name, val) {
+    if (name === "paused") {
+      // Sent by the Live Background host when the desktop is hidden or the user pauses.
+      paused = val === true || val === "true";
+      if (wall) { paused ? wall.stop() : wall.start(); }
+      return;
+    }
     var m = map[name];
     if (!m) return;
     var kv = m(Number(val));
     if (wall) wall.set(kv[0], kv[1]); else pending[kv[0]] = kv[1];
   }
   MistyRidge.create(document.getElementById("mist"), window.MIST_ASSETS, {})
-    .then(function (w) { wall = w; for (var k in pending) w.set(k, pending[k]); })
+    .then(function (w) { wall = w; for (var k in pending) w.set(k, pending[k]); if (paused) w.stop(); })
     .catch(function (e) { document.body.textContent = e.message; document.body.style.color = "#ddd"; });
 </script>
 </body>

@@ -319,10 +319,13 @@ void main() {
       }
     }
 
-    function start() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(draw); } }
-    function stop() { cancelAnimationFrame(raf); raf = 0; }
-    document.addEventListener("visibilitychange", () => (document.hidden ? stop() : start()));
-    start();
+    let held = false; // paused by the host app; page visibility must not undo it
+    function run() { if (!raf && !held && !document.hidden) { last = performance.now(); raf = requestAnimationFrame(draw); } }
+    function halt() { cancelAnimationFrame(raf); raf = 0; }
+    function start() { held = false; run(); }
+    function stop() { held = true; halt(); }
+    document.addEventListener("visibilitychange", () => (document.hidden ? halt() : run()));
+    run();
 
     return {
       params,

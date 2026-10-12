@@ -35,7 +35,7 @@ def main():
     }) + ";\n"
 
     lively = DIST / "lively"
-    shutil.rmtree(DIST, ignore_errors=True)
+    shutil.rmtree(lively, ignore_errors=True)  # only our own outputs; package_app.py shares dist/
     lively.mkdir(parents=True)
     (lively / "assets.js").write_text(assets_js)
     shutil.copy(SRC / "mist.js", lively / "mist.js")
