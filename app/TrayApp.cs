@@ -36,6 +36,8 @@ namespace LiveBackground
                 ("Subtle", 50), ("Normal", 85), ("Dramatic", 140)));
             menu.Items.Add(Choice("Drifting wisps", () => settings.Wisps, v => settings.Wisps = v,
                 ("Off", 0), ("Light", 35), ("Normal", 60), ("Heavy", 90)));
+            menu.Items.Add(Choice("Tree sway", () => settings.Sway, v => settings.Sway = v,
+                ("Still", 0), ("Gentle", 30), ("Normal", 50), ("Windy", 80)));
             menu.Items.Add(Choice("Frame rate", () => settings.Fps, v => settings.Fps = v,
                 ("24 fps", 24), ("30 fps", 30), ("60 fps", 60)));
             menu.Items.Add(new ToolStripSeparator());

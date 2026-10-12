@@ -76,6 +76,11 @@
       <small>A thin travelling veil between the tree rows.</small>
     </div>
     <div class="ctl">
+      <label for="sway">Tree sway <output id="swayOut">50</output></label>
+      <input id="sway" type="range" min="0" max="100" step="5" value="50">
+      <small>How far the treetops bend in the gusts. 0 keeps the trees still.</small>
+    </div>
+    <div class="ctl">
       <label for="fps">Frame rate cap <output id="fpsOut">30 fps</output></label>
       <input id="fps" type="range" min="15" max="60" step="5" value="30">
       <small>Mist is slow; 30 looks smooth and keeps the GPU cool.</small>
@@ -99,7 +104,7 @@
     </section>
     <section>
       <h2>What you are looking at</h2>
-      <p>The fog in the photo was measured pixel by pixel, so the animation knows how far away each tree is. It thickens and thins that same fog over time, which keeps the mist behind the near trees and denser down the valleys. Each monitor gets its own mist, blowing up toward the ridge in the middle, so the two sides never move as mirror copies. The motion loops every 30 minutes with no visible seam.</p>
+      <p>The fog in the photo was measured pixel by pixel, so the animation knows how far away each tree is. It thickens and thins that same fog over time, which keeps the mist behind the near trees and denser down the valleys. Each monitor gets its own mist, blowing up toward the ridge in the middle, so the two sides never move as mirror copies. The treetops bend a few pixels in gusts that roll across the slope with the same wind, while trunks stay put. The motion loops every 30 minutes with no visible seam.</p>
     </section>
   </div>
 </div>
@@ -113,9 +118,10 @@
       speed: function (v) { return v + "%"; },
       thickness: function (v) { return String(v); },
       wisps: function (v) { return String(v); },
+      sway: function (v) { return String(v); },
       fps: function (v) { return v + " fps"; }
     };
-    var map = { speed: ["speed", 0.01], thickness: ["density", 0.01], wisps: ["wisps", 0.01], fps: ["fps", 1] };
+    var map = { speed: ["speed", 0.01], thickness: ["density", 0.01], wisps: ["wisps", 0.01], sway: ["sway", 0.01], fps: ["fps", 1] };
 
     MistyRidge.create(document.getElementById("mist"), window.MIST_ASSETS, {}).then(function (w) {
       Object.keys(map).forEach(function (id) {
@@ -127,8 +133,8 @@
       w.onFps(function (f) { status.textContent = "Rendering at " + f.toFixed(0) + " fps"; });
 
       var cmp = document.getElementById("compare"), saved = null;
-      var down = function () { if (saved) return; saved = [w.params.density, w.params.wisps]; w.set("density", 0); w.set("wisps", 0); cmp.textContent = "Showing still photo"; };
-      var up = function () { if (!saved) return; w.set("density", saved[0]); w.set("wisps", saved[1]); saved = null; cmp.textContent = "Hold to see still photo"; };
+      var down = function () { if (saved) return; saved = [w.params.density, w.params.wisps, w.params.sway]; w.set("density", 0); w.set("wisps", 0); w.set("sway", 0); cmp.textContent = "Showing still photo"; };
+      var up = function () { if (!saved) return; w.set("density", saved[0]); w.set("wisps", saved[1]); w.set("sway", saved[2]); saved = null; cmp.textContent = "Hold to see still photo"; };
       cmp.addEventListener("pointerdown", down);
       ["pointerup", "pointerleave", "pointercancel"].forEach(function (e) { cmp.addEventListener(e, up); });
       cmp.addEventListener("keydown", function (e) { if (e.key === " " || e.key === "Enter") { e.preventDefault(); down(); } });

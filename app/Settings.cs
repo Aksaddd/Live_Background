@@ -12,6 +12,7 @@ namespace LiveBackground
         [DataMember] public int Speed;       // %
         [DataMember] public int Thickness;   // movement strength
         [DataMember] public int Wisps;
+        [DataMember] public int Sway;        // treetop bend
         [DataMember] public int Fps;
         [DataMember] public bool Paused;
         [DataMember] public bool PauseWhenCovered;
@@ -29,6 +30,7 @@ namespace LiveBackground
             Speed = 100;
             Thickness = 85;
             Wisps = 60;
+            Sway = 50;
             Fps = 30;
             Paused = false;
             PauseWhenCovered = true;

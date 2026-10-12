@@ -87,6 +87,7 @@ namespace LiveBackground
             Send("speed", s.Speed);
             Send("thickness", s.Thickness);
             Send("wisps", s.Wisps);
+            Send("sway", s.Sway);
             Send("fps", s.Fps);
         }
 

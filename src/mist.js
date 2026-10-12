@@ -17,6 +17,9 @@
  *   independent noise and a mirrored wind that blows upslope toward the ridge
  *   at the centre, so the trees stay symmetric but the mist never does.
  *
+ *   Trees sway by bending the photo a few pixels: tools/sway_map.py marks how far each pixel
+ *   may move (treetops most, trunks not at all) and a gusting wind signal drives it.
+ *
  *   Time loops seamlessly every LOOP seconds by blending two noise samples
  *   (variance-preserving), which keeps shader coordinates small so precision
  *   never degrades no matter how long the wallpaper runs.
@@ -27,7 +30,8 @@
   const LOOP = 1800; // seconds
   const HALF_ASPECT = 2560 / 1440;
 
-  const defaults = { speed: 1.0, density: 0.85, wisps: 0.6, fps: 30, fogScale: 1 / 3 };
+  const defaults = { speed: 1.0, density: 0.85, wisps: 0.6, sway: 0.5, fps: 30, fogScale: 1 / 3 };
+  const SWAY_MAX_PX = 7; // treetop bend at sway = 1, in source pixels (1440-tall photo)
 
   const VERT = `
 attribute vec2 aPos;
@@ -107,7 +111,7 @@ float fbm(vec3 p, int oct) {
 // Wind blows upslope: right and up on the left monitor, mirrored on the right.
 vec2 windDir(float side) { return normalize(vec2(side < 0.5 ? 0.75 : -0.75, -0.66)); }
 
-vec2 fields(vec2 p, vec2 w, float t, vec3 seed) {
+vec3 fields(vec2 p, vec2 w, float t, vec3 seed) {
   // Far billows: big, slow, gently domain-warped.
   vec3 pb = vec3(p * 1.1 - w * t * 0.016, t * 0.012) + seed;
   vec2 warp = vec2(snoise(pb * 0.6 + 31.0), snoise(pb * 0.6 + 71.0));
@@ -118,7 +122,14 @@ vec2 fields(vec2 p, vec2 w, float t, vec3 seed) {
   vec2 q = vec2(dot(p, along) * 1.6, dot(p, across) * 3.6);
   vec3 pw = vec3(q - vec2(t * 0.075, 0.0), t * 0.03) + seed * 1.7;
   float wisp = fbm(pw + vec3(warp * 0.35, 0.0), 4);
-  return vec2(billow, wisp);
+
+  // Tree sway: gusts roll across the slope with the wind; each tree oscillates near its own
+  // phase, varying slowly with x so a whole crown bends together. Positive = leans downwind.
+  float gust = smoothstep(-0.35, 0.75, snoise(vec3(p * vec2(0.45, 0.25) - w * t * 0.11, t * 0.04) + seed));
+  float phase = snoise(vec3(p.x * 4.0, p.y * 0.6, 3.0) + seed) * 3.14159;
+  float osc = sin(t * 1.9 + phase) * 0.65 + snoise(vec3(p.x * 2.5, p.y * 0.5, t * 0.35) + seed) * 0.35;
+  float sway = (0.15 + gust * 0.85) * (0.35 * gust + 0.65 * osc);
+  return vec3(billow, wisp, sway);
 }
 
 void main() {
@@ -131,11 +142,12 @@ void main() {
   vec2 w = windDir(side);
 
   // Seamless loop: blend f(t) and f(t - LOOP), preserving variance.
-  vec2 a = fields(p, w, uT, seed);
-  vec2 b = fields(p, w, uT - ${LOOP.toFixed(1)}, seed);
+  vec3 a = fields(p, w, uT, seed);
+  vec3 b = fields(p, w, uT - ${LOOP.toFixed(1)}, seed);
   float wa = 1.0 - uPhase, wb = uPhase;
-  vec2 f = (a * wa + b * wb) / sqrt(wa * wa + wb * wb);
-  gl_FragColor = vec4(clamp(f * 0.5 + 0.5, 0.0, 1.0), 0.0, 1.0);
+  vec3 f = (a * wa + b * wb) / sqrt(wa * wa + wb * wb);
+  f.z *= sign(w.x); // lean downwind: rightward on the left monitor, leftward on the right
+  gl_FragColor = vec4(clamp(f * 0.5 + 0.5, 0.0, 1.0), 1.0);
 }`;
 
   // Pass 2: re-render the photo's fog with animated transmission.
@@ -144,6 +156,8 @@ precision highp float;
 uniform sampler2D uImage;
 uniform sampler2D uTrans;
 uniform sampler2D uFog;
+uniform sampler2D uSway;
+uniform float uSwayAmt;  // treetop bend, in texture-u units
 uniform vec2 uRes;
 uniform vec2 uCoverScale;
 uniform vec2 uCoverOffset;
@@ -159,11 +173,16 @@ void main() {
   float lx = uv.x < 0.5 ? uv.x * 2.0 : (1.0 - uv.x) * 2.0; // mirror right half
   vec2 tc = vec2(lx, uv.y);
 
+  vec3 f3 = texture2D(uFog, fogUv).rgb * 2.0 - 1.0;
+  // Bend treetops: sample the photo from upwind. The right half is mirrored in texture space.
+  float bend = texture2D(uSway, tc).r * f3.z * uSwayAmt;
+  tc.x -= uv.x < 0.5 ? bend : -bend;
+
   vec3 I = texture2D(uImage, tc).rgb;
   float te = max(texture2D(uTrans, tc).r, 0.15);
   vec3 J = clamp((I - uAir) / te + uAir, 0.0, 1.0);
 
-  vec2 f = texture2D(uFog, fogUv).rg * 2.0 - 1.0;
+  vec2 f = f3.xy;
   float d = -log(te);                       // optical depth: 0 near … ~1.9 far
   float farW = smoothstep(0.15, 1.2, d);
   float n = mix(f.y, f.x, farW);            // near pixels follow wisps, far follow billows
@@ -230,9 +249,12 @@ void main() {
     const gl = canvas.getContext("webgl", { antialias: false, alpha: false, preserveDrawingBuffer: false, powerPreference: "low-power" });
     if (!gl) throw new Error("WebGL is not available.");
 
-    const [img, trans] = await Promise.all([loadImage(assets.image), loadImage(assets.transmission)]);
+    const [img, trans, swayImg] = await Promise.all(
+      [loadImage(assets.image), loadImage(assets.transmission), loadImage(assets.sway)]);
     const imageTex = texture(gl, img, gl.RGB);
     const transTex = texture(gl, trans, gl.LUMINANCE);
+    const swayTex = texture(gl, swayImg, gl.LUMINANCE);
+    const swayUnit = SWAY_MAX_PX / img.width;
     const fogTex = texture(gl, null, gl.RGBA);
     const fbo = gl.createFramebuffer();
 
@@ -300,9 +322,12 @@ void main() {
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, imageTex);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, transTex);
       gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, fogTex);
+      gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, swayTex);
       gl.uniform1i(compProg.u.uImage, 0);
       gl.uniform1i(compProg.u.uTrans, 1);
       gl.uniform1i(compProg.u.uFog, 2);
+      gl.uniform1i(compProg.u.uSway, 3);
+      gl.uniform1f(compProg.u.uSwayAmt, params.sway * swayUnit);
       gl.uniform2f(compProg.u.uRes, W, H);
       gl.uniform2fv(compProg.u.uCoverScale, cover.scale);
       gl.uniform2fv(compProg.u.uCoverOffset, cover.offset);

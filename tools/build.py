@@ -27,10 +27,14 @@ def main():
     out = subprocess.run([sys.executable, str(ROOT / "tools" / "haze_map.py"), str(image), str(trans)],
                          check=True, capture_output=True, text=True).stdout
     airlight = json.loads(out)["airlight"]
+    sway = ASSETS / "sway.png"
+    subprocess.run([sys.executable, str(ROOT / "tools" / "sway_map.py"), str(image),
+                    ",".join(str(a) for a in airlight), str(sway)], check=True, capture_output=True)
 
     assets_js = "window.MIST_ASSETS = " + json.dumps({
         "image": data_uri(image, "image/jpeg"),
         "transmission": data_uri(trans, "image/png"),
+        "sway": data_uri(sway, "image/png"),
         "airlight": airlight,
     }) + ";\n"
 
