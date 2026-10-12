@@ -6,7 +6,7 @@ A small Windows 11 app that runs an animated web wallpaper behind the desktop ic
 
 1. Download `dist/LiveBackground-win-x64.zip` and unzip it somewhere permanent.
 2. Run `LiveBackground.exe`. It is unsigned, so SmartScreen may ask: **More info → Run anyway**.
-3. Use the tray icon to pause, adjust mist speed, movement, wisps, tree sway and frame rate, or enable **Start with Windows**.
+3. Double-click the tray icon (or right-click → **Adjust mist and trees…**) for sliders that change mist speed, movement, wisps, tree sway and frame rate live. The tray menu also has **Pause** and **Start with Windows**.
 
 It needs the Microsoft Edge WebView2 Runtime and .NET Framework 4.8, both of which ship with Windows 11. Settings and a log live in `%LOCALAPPDATA%\LiveBackground` (tray → **Open log folder**).
 

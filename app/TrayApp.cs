@@ -16,6 +16,8 @@ namespace LiveBackground
         private readonly NotifyIcon tray;
         private readonly Timer watchdog = new Timer { Interval = 1000 };
         private readonly Timer restartDelay = new Timer { Interval = 1500 };
+        private readonly Timer saveDelay = new Timer { Interval = 600 };
+        private SettingsForm settingsForm;
         private readonly BroadcastWindow broadcasts;
         private readonly ToolStripMenuItem pauseItem;
 
@@ -28,18 +30,11 @@ namespace LiveBackground
             var menu = new ContextMenuStrip();
             menu.Items.Add(new ToolStripMenuItem("Live Background") { Enabled = false });
             menu.Items.Add(new ToolStripSeparator());
+            var adjust = new ToolStripMenuItem("Adjust mist and trees…", null, (s, e) => OpenSettings());
+            adjust.Font = new Font(adjust.Font, FontStyle.Bold); // default action, same as double-click
+            menu.Items.Add(adjust);
             pauseItem = new ToolStripMenuItem("Pause", null, (s, e) => TogglePause());
             menu.Items.Add(pauseItem);
-            menu.Items.Add(Choice("Mist speed", () => settings.Speed, v => settings.Speed = v,
-                ("Slow", 50), ("Normal", 100), ("Fast", 200)));
-            menu.Items.Add(Choice("Mist movement", () => settings.Thickness, v => settings.Thickness = v,
-                ("Subtle", 50), ("Normal", 85), ("Dramatic", 140)));
-            menu.Items.Add(Choice("Drifting wisps", () => settings.Wisps, v => settings.Wisps = v,
-                ("Off", 0), ("Light", 35), ("Normal", 60), ("Heavy", 90)));
-            menu.Items.Add(Choice("Tree sway", () => settings.Sway, v => settings.Sway = v,
-                ("Still", 0), ("Gentle", 30), ("Normal", 50), ("Windy", 80)));
-            menu.Items.Add(Choice("Frame rate", () => settings.Fps, v => settings.Fps = v,
-                ("24 fps", 24), ("30 fps", 30), ("60 fps", 60)));
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(Toggle("Pause when apps cover the screen", () => settings.PauseWhenCovered,
                 v => { settings.PauseWhenCovered = v; settings.Save(); }));
@@ -60,12 +55,13 @@ namespace LiveBackground
                 ContextMenuStrip = menu,
                 Visible = true,
             };
-            tray.DoubleClick += (s, e) => TogglePause();
+            tray.DoubleClick += (s, e) => OpenSettings();
 
             broadcasts = new BroadcastWindow(() => Restart("Explorer restarted"));
             SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
             SystemEvents.SessionSwitch += OnSessionSwitch;
             restartDelay.Tick += (s, e) => { restartDelay.Stop(); Start(); };
+            saveDelay.Tick += (s, e) => { saveDelay.Stop(); settings.Save(); };
             watchdog.Tick += (s, e) => Watch();
 
             UpdatePauseLabel();
@@ -180,26 +176,21 @@ namespace LiveBackground
             ApplyPause();
         }
 
-        private ToolStripMenuItem Choice(string title, Func<int> get, Action<int> set, params (string label, int value)[] options)
+        private void OpenSettings()
         {
-            var parent = new ToolStripMenuItem(title);
-            foreach (var (label, value) in options)
+            if (settingsForm == null || settingsForm.IsDisposed)
             {
-                var item = new ToolStripMenuItem(label) { Tag = value };
-                item.Click += (s, e) =>
+                settingsForm = new SettingsForm(settings, () =>
                 {
-                    set(value);
-                    settings.Save();
-                    wallpaper?.Apply(settings);
-                };
-                parent.DropDownItems.Add(item);
+                    wallpaper?.Apply(settings); // live while dragging
+                    saveDelay.Stop();
+                    saveDelay.Start();
+                });
+                settingsForm.FormClosed += (s, e) => { saveDelay.Stop(); settings.Save(); };
             }
-            parent.DropDownOpening += (s, e) =>
-            {
-                foreach (ToolStripMenuItem item in parent.DropDownItems)
-                    item.Checked = (int)item.Tag == get();
-            };
-            return parent;
+            settingsForm.Show();
+            if (settingsForm.WindowState == FormWindowState.Minimized) settingsForm.WindowState = FormWindowState.Normal;
+            settingsForm.Activate();
         }
 
         private static ToolStripMenuItem Toggle(string title, Func<bool> get, Action<bool> set)
@@ -227,6 +218,8 @@ namespace LiveBackground
         {
             watchdog.Stop();
             restartDelay.Stop();
+            if (saveDelay.Enabled) { saveDelay.Stop(); settings.Save(); }
+            settingsForm?.Close();
             SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
             SystemEvents.SessionSwitch -= OnSessionSwitch;
             Stop();
